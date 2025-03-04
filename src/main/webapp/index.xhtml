@@ -1,0 +1,28 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:jsf="http://xmlns.jcp.org/jsf"
+      xmlns:pt="http://xmlns.jcp.org/jsf/passthrough"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets">
+
+    <h:body>
+    <ui:composition template="./template.xhtml">
+    <ui:define name="pageheader">
+    <title>DBアクセスのサンプル</title>
+    </ui:define>
+    <ui:define name="header">
+    <h1>DBアクセスのサンプル</h1>
+    </ui:define>
+    <ui:define name="main">
+    <div id="app" />
+        <h:outputStylesheet library="css" name="App.css"/>
+        <script type="module" src="resources/script/App.js"></script>
+    </ui:define>
+    <ui:define name="footer">
+    <small><h:outputText value="#{sessionInfoBean.contextPath}"/></small>
+    </ui:define>
+    </ui:composition>
+    </h:body>
+</html>

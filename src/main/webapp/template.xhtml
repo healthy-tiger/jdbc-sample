@@ -1,0 +1,27 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:jsf="http://xmlns.jcp.org/jsf"
+      xmlns:p="http://xmlns.jcp.org/jsf/passthrough"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets">
+
+    <h:head>
+    <meta http-equiv="Content-Type"
+          content="text/html; charset=UTF-8" />
+    <h:outputStylesheet library="css" name="App.css"/>
+    <ui:insert name="pageheader">page header</ui:insert>
+    </h:head>
+    <h:body>
+    <header>
+        <ui:insert name="header">header section</ui:insert>
+    </header>
+    <main>
+        <ui:insert name="main">main section</ui:insert>
+    </main>
+    <footer>
+        <ui:insert name="footer">header section</ui:insert>
+    </footer>
+    </h:body>
+</html>
