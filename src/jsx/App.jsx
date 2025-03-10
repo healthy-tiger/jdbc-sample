@@ -32,7 +32,7 @@ const GridExample = () => {
         dialog.current.showModal();
 
         const params = new URLSearchParams();
-        params.set('title', title);
+        params.set('title', title == null ? '' : title);
 
         controller.current = new AbortController();
         try {
