@@ -4,6 +4,7 @@ import { useState, useRef, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, } from 'ag-grid-community';
+import read from './jsonstream';
 ModuleRegistry.registerModules([AllCommunityModule,]);
 
 const GridExample = () => {
@@ -23,8 +24,6 @@ const GridExample = () => {
     const dialog = useRef(null);
     const controller = useRef(null);
     const [title, setTitle] = useState(null);
-    const decoder = useRef(new TextDecoder());
-    const sizeofint = 4;
     const rawrecords = useRef([]);
 
     const doSearch = async (evt) => {
@@ -41,26 +40,10 @@ const GridExample = () => {
             if (!response.ok) {
                 throw new Error(`Response status: ${response.status}`);
             }
-            const reader = response.body.getReader({mode:'byob'});
-            let lengthview = new DataView(new ArrayBuffer(sizeofint));
-            let chunk = await reader.read(lengthview, {min:sizeofint});
-            while (!chunk.done) {
-                const len = chunk.value.getInt32(0, false);
-                //console.log(len);
-                const textview = new DataView(new ArrayBuffer(len));
-                chunk = await reader.read(textview, {min:len});
-                const s = decoder.current.decode(chunk.value);
-                //console.log(s);
-                try {
-                    const r = JSON.parse(s);
-                    rawrecords.current.push(r.r);
-                    setCount(rawrecords.current.length);
-                }
-                catch(e) {
-                    console.error(e);
-                }
-                lengthview = new DataView(new ArrayBuffer(sizeofint));
-                chunk = await reader.read(lengthview, {min:sizeofint});
+            const reader = read(response.body.getReader());
+            for await (const raw of reader) {
+                rawrecords.current.push(raw.r);
+                setCount(rawrecords.current.length);
             }
             setRows(rawrecords.current);
             rawrecords.current = [];

@@ -94,7 +94,6 @@ public class OdDataset {
                         ByteBuffer.wrap(lenb).order(ByteOrder.BIG_ENDIAN).putInt(text.length);
                         os.write(lenb);
                         os.write(text);
-                        os.flush(); // これは必ず入れる。チャンクの区切りとデータの区切りが合わなくなる。
                     }
                 }
                 catch(SQLException e) {
