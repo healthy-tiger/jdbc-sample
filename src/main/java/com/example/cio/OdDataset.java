@@ -20,6 +20,7 @@ import javax.naming.NamingException;
 
 import java.io.OutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -30,10 +31,11 @@ import java.sql.*;
 
 import java.util.concurrent.*;
 import java.util.List;
+import java.util.ArrayList;
 
 @Path("oddataset")
 public class OdDataset {
-    private class ResponseOutput implements StreamingOutput {
+    private class ResponseOutput implements StreamingOutput,Runnable {
         private String title;
         public ResponseOutput(String title) {
             if(title == null || title.isEmpty()) {
@@ -42,72 +44,72 @@ public class OdDataset {
             this.title = title;
         }
 
-        class ResultSetReader implements Callable<Boolean> {
-            ResultSet rs;
-            Charset utf8 = Charset.forName("UTF-8");
+        Charset utf8 = Charset.forName("UTF-8");
 
-            public ResultSetReader(ResultSet rs) {
-                this.rs = rs;
-            }
-
-            public byte[] resultBytes = null;
-
-            @Override
-            public Boolean call() throws Exception {
-                resultBytes = row2json().toString().getBytes(utf8);
-                return rs.next();
-            }
-
-            private void addString(JsonArrayBuilder ab, String val) {
-                if(val == null) {
-                    ab.addNull();
-                } else {
-                    ab.add(val);
-                }
-            }
-
-            private JsonObject row2json() throws SQLException {
-                JsonObjectBuilder ob = Json.createObjectBuilder();
-                JsonArrayBuilder ab = Json.createArrayBuilder();
-                ab.add(rs.getLong("dataset_id"));
-                addString(ab, rs.getString("dataset_title"));
-                addString(ab, rs.getString("dataset_name"));
-                addString(ab, rs.getString("publisher"));
-                addString(ab, rs.getString("creator"));
-                addString(ab, rs.getString("group_title"));
-                addString(ab, rs.getString("frequency_of_update"));
-                addString(ab, rs.getString("description"));
-                addString(ab, rs.getString("release_day"));
-                ob.add("r", ab);
-                return ob.build();
+        private void addString(JsonArrayBuilder ab, String val) {
+            if(val == null) {
+                ab.addNull();
+            } else {
+                ab.add(val);
             }
         }
 
-        class ResultSetWriter implements Callable<Boolean> {
-            OutputStream os;
+        private JsonObject row2json(ResultSet rs) throws SQLException {
+            JsonObjectBuilder ob = Json.createObjectBuilder();
+            JsonArrayBuilder ab = Json.createArrayBuilder();
+            ab.add(rs.getLong("dataset_id"));
+            addString(ab, rs.getString("dataset_title"));
+            addString(ab, rs.getString("dataset_name"));
+            addString(ab, rs.getString("publisher"));
+            addString(ab, rs.getString("creator"));
+            addString(ab, rs.getString("group_title"));
+            addString(ab, rs.getString("frequency_of_update"));
+            addString(ab, rs.getString("description"));
+            addString(ab, rs.getString("release_day"));
+            ob.add("r", ab);
+            return ob.build();
+        }
 
-            public ResultSetWriter(OutputStream os) {
-                this.os = os;
+        private Exception lastError = null;
+
+        @Override
+        public void run() {
+            byte[] lenb = new byte[Integer.BYTES];
+            lastError = null;
+            try {
+                record2write.forEach(e -> {
+                    byte[] txt2write = e.toString().getBytes(utf8);
+                    ByteBuffer.wrap(lenb).order(ByteOrder.BIG_ENDIAN).putInt(txt2write.length);
+                    try {
+                        os.write(lenb);
+                        os.write(txt2write);
+                    }
+                    catch(IOException ex) {
+                        throw new UncheckedIOException(ex);
+                    }
+                });
             }
-
-            public byte[] textToWrite = null;
-
-            private byte[] lenb = new byte[Integer.BYTES];
-
-            @Override
-            public Boolean call() throws Exception {
-                if(textToWrite != null) {
-                    ByteBuffer.wrap(lenb).order(ByteOrder.BIG_ENDIAN).putInt(textToWrite.length);
-                    os.write(lenb);
-                    os.write(textToWrite);
-                }
-                return true;
+            catch(Exception e) {
+                lastError = e;
             }
         }
+
+        ArrayList<JsonObject> record2write = new ArrayList();
+
+        private ArrayList<JsonObject> loadNext(ResultSet rs, int n) throws SQLException {
+            ArrayList<JsonObject> records = new ArrayList(n);
+            for(int i = 0; i < n && rs.next(); i++) {
+                records.add(row2json(rs));
+            }
+            return records;
+        }
+
+        OutputStream os;
 
         @Override
         public void write(OutputStream os) throws IOException, WebApplicationException {
-            ExecutorService es = Executors.newFixedThreadPool(2);
+            this.os = os;
+            ExecutorService es = Executors.newSingleThreadExecutor();
             try {
                 InitialContext context = new InitialContext();
                 DataSource dataSource = (DataSource)context.lookup("java:/comp/env/jdbc/cio");
@@ -115,19 +117,19 @@ public class OdDataset {
                 Statement st = conn.createStatement();
                 ResultSet rs = st.executeQuery("SELECT * FROM oddataset WHERE dataset_title like '%" + title + "%'");
                 try (conn; st; rs) {
-                    boolean nextAvailable = rs.next();
-                    ResultSetReader reader = new ResultSetReader(rs);
-                    ResultSetWriter writer = new ResultSetWriter(os);
-                    List<Callable<Boolean>> tasks = List.of(reader, writer);
-                    while(nextAvailable) {
-                        List<Future<Boolean>> fs = es.invokeAll(tasks);
-                        writer.textToWrite = reader.resultBytes;
-                        reader.resultBytes = null;
+                    ArrayList<JsonObject> nextwrite = loadNext(rs, 100);
+                    while(nextwrite.size() > 0) {
+                        record2write = nextwrite;
+                        Future f = es.submit(this);
+                        nextwrite = loadNext(rs, 100);
                         try {
-                            nextAvailable = fs.get(0).get() && fs.get(1).get();
+                            f.get();
                         }
                         catch(ExecutionException e) {
                             throw e.getCause();
+                        }
+                        if(lastError != null) {
+                            throw lastError;
                         }
                     }
                 }
@@ -148,6 +150,7 @@ public class OdDataset {
                 if(es != null) {
                     es.shutdown();
                 }
+                this.os = null;
             }
         }
     }
