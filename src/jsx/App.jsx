@@ -21,22 +21,13 @@ const getColumnValue = params => {
 }
 
 const setColumnValue = params => {
-    /*
-    if(params.colDef.field == '8') {
-        if(null == parseDate(params.newValue)) {
-            params.data.invalidCols.add(params.colDef.field);
-        } else {
-            params.data.invalidCols.delete(params.colDef.field);
-        }
-    }
-    */
-    params.data.columns[params.colDef.field] = params.newValue;
+   params.data.columns[params.colDef.field] = params.newValue;
     return true;
 }
 
 const cellStyleCb = params => {
     if(params.data.invalidCols.has(params.colDef.field)) {
-        return { backgroundColor: 'red' }
+        return { backgroundColor: 'salmon' }
     } else {
         return { backgroundColor: 'white' }
     }

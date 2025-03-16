@@ -14,6 +14,10 @@
     grid-row: 1;
 }
 
+#pos-data-controller > form > * {
+    margin: 0px 5pt;
+}
+
 #pos-data-grid {
     grid-column: 1;
     grid-row: 2;

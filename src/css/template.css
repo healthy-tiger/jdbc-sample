@@ -18,6 +18,12 @@ body > header {
     padding: 10pt;
 }
 
+body > header > h1 {
+    margin: 0px;
+    padding: 0px;
+    font-size: 1.5em;
+}
+
 body > main {
     grid-row: 2;
     grid-column: 1;
